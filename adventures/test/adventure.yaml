@@ -1,2 +1,6 @@
-name: "Test Adventure"
-setting: "The ethereal void"
+topics:
+  - adventure_description
+  - characters
+  - Lawrence
+  - places
+  - the_city

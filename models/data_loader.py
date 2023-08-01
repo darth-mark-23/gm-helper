@@ -1,73 +1,56 @@
+import markdown
 import os
-import yaml
 import sys
+import yaml
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List
 
 @dataclass
 class DataLoader:
-    paths: dict
-    adventure: any = field(default_factory=dict)
+    adventure_name: str
+    adventure_path: str
+    adventure_info: str = ""
 
-    def __init__(self, paths: dict):
-        # If there's no 'adventures_path' key in the paths dict, throw an error
-        if 'adventures_path' not in paths:
-            raise ValueError("No 'adventures_path' key in paths dict")
-        
-        # If there's no 'characters_path' key in the paths dict, throw an error
-        if 'characters_path' not in paths:
-            raise ValueError("No 'characters_path' key in paths dict")
-        
-        self.paths = paths
+    def __init__(self, adventure_name: str, adventure_path: str):
+        self.adventure_name = adventure_name
+        self.adventure_path = adventure_path
 
-    def load_adventure(self) -> dict:
-        if len(sys.argv) < 2:
-            print("Please specify an adventure name")
-            sys.exit()
-
-        adventure_name = sys.argv[1]
-
-        if not os.path.exists(self.paths["adventures_path"] + adventure_name):
-            print("Adventure " + adventure_name + " does not exist")
-            sys.exit()
-
-        self.adventure_path = self.paths["adventures_path"] + adventure_name + "/"
-        self.characters_path = self.adventure_path + self.paths["characters_path"]
-
+    def load_adventure(self) -> str:
         # Load adventure information
         with open(self.adventure_path + "adventure.yaml", 'r') as stream:
             try:
-                adventure = yaml.safe_load(stream)
+                adventure_yaml = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 print(exc)
         
-        # Load characters
-        adventure["characters"] = self.load_characters(adventure_name)
+        # Get adventure topics
+        if "topics" not in adventure_yaml:
+            print("No topics found in adventure.yaml")
+            sys.exit()
+        topics = adventure_yaml["topics"]
 
-        self.adventure = adventure
+        # Load topics
+        self.adventure_info = self.load_topics(topics)
 
-        return self.adventure
+        return self.adventure_info
     
-    # Load a single character from a YAML file
-    def load_character(self, character_file: str) -> dict:
-        character = None
+    def load_topics(self, adventure_name: str) -> List[dict]:
+        # For each topic, load the topic markdown file and append it to the adventure info, separated by a newline
+        for topic in adventure_name:
+            topic_path = self.adventure_path + topic + ".md"
+            # If the topic file exists, load it
+            if os.path.exists(topic_path):
+                with open(topic_path, 'r') as stream:
+                    try:
+                        markdown_text = stream.read()
+                        # Process the markdown_text string here
+                    except Exception as exc:
+                        print(exc)
+                
+                # Append the markdown text to the adventure info
+                self.adventure_info += markdown_text + "\n\n"
+            else:
+                print("Topic " + topic + " does not exist -- skipping...")
 
-        with open(self.characters_path + character_file, 'r') as stream:
-            try:
-                character = yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                print(exc)
-
-        return character
-
-    
-    def load_characters(self, adventure_name: str) -> List[dict]:
-        characters = []
-
-        for character_file in os.listdir(self.characters_path):
-            if character_file.endswith(".yaml"):
-                character = self.load_character(character_file)
-                characters.append(character)
-
-        return characters
+        return self.adventure_info
